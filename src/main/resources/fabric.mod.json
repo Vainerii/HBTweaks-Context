@@ -1,0 +1,39 @@
+{
+	"schemaVersion": 1,
+	"id": "hb-tweaks-context",
+	"version": "${version}",
+	"name": "HB Tweaks Context",
+	"description": "Add a contact menu for herobrine.fr",
+	"authors": [
+		"Vaïnerii"
+	],
+	"contact": {
+		"homepage": "https://modrinth.com/mod/hbtweaks-context",
+		"sources": "https://github.com/Vainerii/HBTweaks-Context"
+	},
+	"license": "MIT",
+	"icon": "assets/hb-tweaks-context/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"vai.hbtweaks.context.HBTweaksContext"
+		],
+		"client": [
+			"vai.hbtweaks.context.client.HBTweaksContextClient"
+		]
+	},
+	"mixins": [
+		"hb-tweaks-context.mixins.json",
+		{
+			"config": "hb-tweaks-context.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.1",
+		"minecraft": ">=1.21.8",
+		"java": ">=21",
+		"fabric-api": "*",
+		"mouse-pointer-api": ">=0.1.0"
+	}
+}
