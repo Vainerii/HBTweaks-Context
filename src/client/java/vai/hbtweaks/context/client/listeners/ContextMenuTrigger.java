@@ -18,10 +18,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
+import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
 import vai.mousepointerapi.events.MouseTrackerEntityClickUpCallback;
 import vai.mousepointerapi.util.ClickType;
 import vai.mousepointerapi.util.ScreenType;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +39,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
      */
 
     private static ContextMenu contextMenu = null;
+    public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(Paths.get("custom_menu.yml"));
 
     private static final ResourceLocation menuResourceLocation = ResourceLocation.fromNamespaceAndPath(HBTweaksContext.MOD_ID, "before_chat");
 
@@ -52,7 +56,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         return mc.player.connection.getCommands().getRoot().getChild(command) != null;
     }
 
-    private String getMCName(Player player) {
+    public static String getMCName(Player player) {
         LocalPlayer mainPlayer = Minecraft.getInstance().player;
         if (mainPlayer != null) {
             PlayerInfo pi = mainPlayer.connection.getPlayerInfo(player.getUUID());
@@ -71,17 +75,19 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private ContextMenu makeReputAvisContextMenu(Player player, String cmdPart) {
-        String mcName = getMCName(player);
-        ContextMenu context = new ContextMenu(0, 0);
-        context.addCommandItem(Component.literal("✔ OK").withStyle(ChatFormatting.GREEN), "%sok %s".formatted(cmdPart, mcName));
-        context.addCommandItem(Component.literal("• NO").withStyle(ChatFormatting.GRAY), "%sno %s".formatted(cmdPart, mcName));
-        context.addCommandItem(Component.literal("✘ KO").withStyle(ChatFormatting.RED), "%sko %s".formatted(cmdPart, mcName));
+        String mcName = ContextMenuTrigger.getMCName(player);
+        ContextMenu context = new ContextMenu(0, 0, player);
+        context.addCommandItem(Component.literal("✔ OK").withStyle(ChatFormatting.GREEN), cmdPart + "ok %mcname%");
+        context.addCommandItem(Component.literal("• NO").withStyle(ChatFormatting.GRAY), cmdPart + "no %mcname%");
+        context.addCommandItem(Component.literal("✘ KO").withStyle(ChatFormatting.RED), cmdPart + "ko %mcname%");
         return context;
     }
 
     private ContextMenu makeDebugContextMenu(Player player) {
-        ContextMenu context = new ContextMenu(0, 0);
+        ContextMenu context = new ContextMenu(0, 0, player);
         PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
+        if (pi == null)
+            return null;
         PropertyMap properties = pi.getProfile().getProperties();
         for (Map.Entry<String, Property> e : properties.entries()) {
             context.addActionItem(Component.literal(e.getKey()), () -> {
@@ -94,10 +100,12 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private ContextMenu makeInfoContextMenu(Player player) {
         PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
-        ContextMenu infosContext = new ContextMenu(0, 0);
+        if (pi == null)
+            return null;
+        ContextMenu infosContext = new ContextMenu(0, 0, player);
         infosContext.addInfoItem(pi.getTabListDisplayName());
         try {
-            Component mcName = Component.literal(getMCName(player)).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
+            Component mcName = Component.literal(ContextMenuTrigger.getMCName(player)).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
             infosContext.addInfoItem(mcName);
         } catch (Exception ignored) { }
         return infosContext;
@@ -111,6 +119,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             if (!(target instanceof Player))
                 return;
             Player targetPlayer = (Player) list.getFirst();
+            if (mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
+                return;
             int x = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
             int y = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
 
@@ -118,7 +128,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 ContextMenuTrigger.contextMenu.close();
             }
 
-            ContextMenuTrigger.contextMenu = new ContextMenu(x, y);
+            ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
             ContextMenuTrigger.contextMenu.addSubmenuItem("Infos", makeInfoContextMenu(targetPlayer));
             if (isCommandAvailable("reputok"))
                 ContextMenuTrigger.contextMenu.addSubmenuItem("Reput", makeReputContextMenu(targetPlayer));
@@ -126,7 +136,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 ContextMenuTrigger.contextMenu.addSubmenuItem("Avis", makeAvisContextMenu(targetPlayer));
             ContextMenuTrigger.contextMenu.open();
 
-            ContextMenuTrigger.contextMenu.addSubmenuItem("Debug", makeDebugContextMenu(targetPlayer));
+            if (ContextMenuTrigger.customMenu != null)
+                ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer));
+
+            if (new File(".hbtweaks_debug").isFile())
+                ContextMenuTrigger.contextMenu.addSubmenuItem("Debug", makeDebugContextMenu(targetPlayer));
 
             // TODO Open context menu
         }

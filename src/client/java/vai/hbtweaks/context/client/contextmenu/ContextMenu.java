@@ -5,10 +5,15 @@ import java.util.List;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import vai.hbtweaks.context.HBTweaksContext;
+import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class ContextMenu {
 
@@ -31,9 +36,12 @@ public class ContextMenu {
     private int width = MIN_WIDTH;
     private ContextMenu openSubmenu = null;
 
-    public ContextMenu(int x, int y) {
+    private Player player;
+
+    public ContextMenu(int x, int y, Player target) {
         this.x = x;
         this.y = y;
+        this.player = target;
     }
 
     public ContextMenu addActionItem(String label, Runnable action) {
@@ -46,12 +54,16 @@ public class ContextMenu {
         return this;
     }
 
+    public Player getPlayer() {
+        return player;
+    }
+
     public ContextMenu addCommandItem(String label, String commandTemplate) {
         return this.addCommandItem(Component.literal(label), commandTemplate);
     }
 
     public ContextMenu addCommandItem(Component label, String commandTemplate) {
-        this.items.add(new CommandItem(label, commandTemplate));
+        this.items.add(new CommandItem(label, commandTemplate, player));
         recalcWidth();
         return this;
     }
@@ -272,10 +284,12 @@ public class ContextMenu {
 
         private final Component label;
         private final String command;
+        private final Player player;
 
-        CommandItem(Component label, String command) {
+        CommandItem(Component label, String command, Player player) {
             this.label = label;
             this.command = command;
+            this.player = player;
         }
 
         @Override
@@ -288,8 +302,36 @@ public class ContextMenu {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null)
                 return;
-            HBTweaksContext.LOGGER.info("COMMAND RUN : " + this.command);
-            mc.player.connection.sendCommand(this.command);
+
+            UUID playerUUID = player.getUUID();
+            PlayerInfo pi = mc.player.connection.getPlayerInfo(playerUUID);
+            if (pi == null)
+                return;
+
+            String c = this.command;
+            if (c.contains("%mcname%"))
+                c = c.replace("%mcname%", ContextMenuTrigger.getMCName(player));
+            if (c.contains("%rpname%"))
+                c = c.replace("%rpname%", pi.getTabListDisplayName().getString());
+            if (c.contains("%blockpos%"))
+                c = c.replace("%blockpos%", "%s %s %s".formatted(player.getBlockX(), player.getBlockY(), player.getBlockZ()));
+            if (c.contains("%eyepos%"))
+                c = c.replace("%eyepos%", "%s %s %s".formatted(player.getEyePosition().x, player.getEyePosition().y, player.getEyePosition().z));
+            if (c.contains("%uuid%"))
+                c = c.replace("%uuid%", player.getStringUUID());
+
+            LocalPlayer me = mc.player;
+            if (c.contains("%mymcname%"))
+                c = c.replace("%mymcname%", ContextMenuTrigger.getMCName(me));
+            if (c.contains("%myrpname%"))
+                c = c.replace("%myrpname%", me.connection.getPlayerInfo(me.getUUID()).getTabListDisplayName().getString());
+            if (c.contains("%mypos%"))
+                c = c.replace("%mypos%","%s %s %s".formatted(me.getBlockX(), me.getBlockY(), me.getBlockZ()));
+            if (c.contains("%myuuid%"))
+                c = c.replace("%myuuid%", "%s %s %s".formatted(me.getEyePosition().x, me.getEyePosition().y, me.getEyePosition().z));
+
+            HBTweaksContext.LOGGER.info("COMMAND RUN : " + c);
+            mc.player.connection.sendCommand(c);
         }
     }
 
@@ -328,5 +370,11 @@ public class ContextMenu {
         @Override public void onClick() {
             // Nothing
         }
+    }
+
+    public ContextMenu merge(ContextMenu cm) {
+        this.items.addAll(cm.items);
+        recalcWidth();
+        return this;
     }
 }
