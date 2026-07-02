@@ -3,7 +3,7 @@ package vai.hbtweaks.context.client.contextmenu;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import org.yaml.snakeyaml.Yaml;
-import vai.hbtweaks.context.HBTweaksContext;
+import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,27 +15,9 @@ public class CustomContextMenuLoader {
     private CustomContextMenuLoader() {}
 
     public static ContextMenu load(Path path, Player player) {
-        ContextMenu cm = new ContextMenu(0, 0, player);
-        return load(cm, path);
-    }
-
-    public static ContextMenu load(Path path, int rootX, int rootY, Player player) {
-        ContextMenu cm = new ContextMenu(rootX, rootY, player);
-        return load(cm, path);
-    }
-
-    public static ContextMenu load(ContextMenu cm, Path path) {
-        try (InputStream is = Files.newInputStream(path)) {
-            Yaml yaml = new Yaml();
-            Map<String, Object> root = yaml.load(is);
-
-            List<?> menuList = (List<?>) root.get("menu");
-            CustomContextMenuLoader.parseItems(cm, (List<Map<String, Object>>) menuList);
-            return cm;
-        } catch (Exception e) {
-            HBTweaksContext.LOGGER.warn("Context menu is missing or invalid");
-            return null;
-        }
+        Map<String, Object> root = readYaml(path);
+        if (root == null) return null;
+        return load(root, player, path);
     }
 
     public static Map<String, Object> readYaml(Path path) {
@@ -47,37 +29,42 @@ public class CustomContextMenuLoader {
         }
     }
 
-    public static ContextMenu load(Map<String, Object> root, Player player) {
+    public static ContextMenu load(Map<String, Object> root, Player player, Path file) {
         ContextMenu cm = new ContextMenu(0, 0, player);
-        CustomContextMenuLoader.parseItems(cm, (List<Map<String, Object>>) root.get("menu"));
+        MenuLocation location = new MenuLocation(file, List.of());
+        parseItems(cm, (List<Map<String, Object>>) root.get("menu"), location);
         return cm;
     }
 
-    private static void parseItems(ContextMenu menu, List<Map<String, Object>> items) {
-        for (Map<String, Object> rawMap : items) {
-            CustomContextMenuLoader.parseEntry(menu, rawMap);
+    private static void parseItems(ContextMenu menu, List<Map<String, Object>> items, MenuLocation container) {
+        for (int i = 0; i < items.size(); i++) {
+            parseEntry(menu, items.get(i), container, i);
         }
     }
 
-    private static void parseEntry(ContextMenu menu, Map<String, Object> entry) {
-
+    private static void parseEntry(ContextMenu menu, Map<String, Object> entry, MenuLocation container, int index) {
         if (entry.containsKey("info")) {
             String text = (String) entry.get("info");
             menu.addInfoItem(Component.literal(text));
+            menu.markLastDeletable(new MenuLocation.DeleteRef(container, index, text));
             return;
         }
 
-        Component label = Component.literal((String) entry.get("label"));
+        String labelStr = (String) entry.get("label");
+        Component label = Component.literal(labelStr);
 
         if (entry.containsKey("submenu")) {
             Object sub = entry.get("submenu");
+            MenuLocation childLocation = container.child(index);
             ContextMenu submenu = new ContextMenu(0, 0, menu.getPlayer());
-            CustomContextMenuLoader.parseItems(submenu, (List<Map<String, Object>>) sub);
+            parseItems(submenu, (List<Map<String, Object>>) sub, childLocation);
+            submenu.addAddItem(childLocation);
             menu.addSubmenuItem(label, submenu);
+            menu.markLastDeletable(new MenuLocation.DeleteRef(container, index, labelStr));
         } else if (entry.containsKey("command")) {
             String command = (String) entry.get("command");
             menu.addCommandItem(label, command);
+            menu.markLastDeletable(new MenuLocation.DeleteRef(container, index, labelStr));
         }
     }
-
 }

@@ -2,6 +2,7 @@ package vai.hbtweaks.context.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -29,6 +30,10 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		ScreenEvents.BEFORE_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
 			if (screen instanceof ChatScreen) {
 				ScreenMouseEvents.afterMouseClick(screen).register(cmt);
+				ScreenKeyboardEvents.afterKeyPress(screen).register((s, keyEvent) -> {
+					if (keyEvent.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_DELETE)
+						ContextMenuTrigger.handleDelete();
+				});
 				ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, delta) -> {
 					cmt.renderOnScreen(graphics, DeltaTracker.ZERO);
 				});

@@ -1,0 +1,59 @@
+package vai.hbtweaks.context.client.contextmenu.editor;
+
+import dev.lambdaurora.spruceui.Position;
+import dev.lambdaurora.spruceui.background.SimpleColorBackground;
+import dev.lambdaurora.spruceui.border.SimpleBorder;
+import dev.lambdaurora.spruceui.screen.SpruceScreen;
+import dev.lambdaurora.spruceui.widget.SpruceLabelWidget;
+import dev.lambdaurora.spruceui.widget.container.SpruceContainerWidget;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+
+abstract class EditorScreen extends SpruceScreen {
+    protected final Screen parent;
+    protected final int panelW;
+    protected final int panelH;
+
+    protected EditorScreen(Screen parent, Component title, int panelW, int panelH) {
+        super(title);
+        this.parent = parent;
+        this.panelW = panelW;
+        this.panelH = panelH;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        int x = (this.width - this.panelW) / 2;
+        int y = (this.height - this.panelH) / 2;
+
+        SpruceContainerWidget panel = new SpruceContainerWidget(Position.of(x, y), this.panelW, this.panelH);
+        panel.setBackground(new SimpleColorBackground(EditorStyle.PANEL_BG));
+        panel.setBorder(new SimpleBorder(1, EditorStyle.PANEL_BORDER));
+
+        SpruceLabelWidget titleLabel = new SpruceLabelWidget(
+                Position.of(panel, EditorStyle.PADDING, EditorStyle.PADDING),
+                this.getTitle(), this.panelW - EditorStyle.PADDING * 2);
+        titleLabel.setColor(EditorStyle.ACCENT);
+        panel.addChild(titleLabel);
+
+        build(panel);
+        this.addRenderableWidget(panel);
+    }
+
+    protected abstract void build(SpruceContainerWidget panel);
+
+    protected void done() {
+        this.minecraft.setScreen(this.parent);
+    }
+
+    @Override
+    public void onClose() {
+        this.minecraft.setScreen(this.parent);
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+}

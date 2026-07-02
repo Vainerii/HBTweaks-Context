@@ -2,6 +2,7 @@ package vai.hbtweaks.context.client.contextmenu;
 
 import java.util.List;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.util.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -15,6 +16,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.HBTweaksContext;
+import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.listeners.ContextMenuTrigger;
 
 import java.util.ArrayList;
@@ -32,11 +36,20 @@ public class ContextMenu {
     private static final int COLOR_BG = 0xE0101010;
     private static final int COLOR_HOVER = 0xFF2255AA;
     private static final int COLOR_BORDER = 0xFF3A3A3A;
+    private static final int COLOR_TOGGLE_BG = 0xFF2A2A2A;
+
+    private static final int TOGGLE_SIZE = 9;
+    private static final int TOGGLE_GAP = 1;
 
     private int x;
     private int y;
 
+    public static boolean EDIT_ENABLED = true;
+    public static boolean editMode = false;
+
     private final List<MenuItem> items = new ArrayList<>();
+    private final List<MenuLocation.DeleteRef> itemDelete = new ArrayList<>();
+    private boolean hasEditToggle = false;
     private boolean visible = false;
     private int width = MIN_WIDTH;
     private ContextMenu openSubmenu = null;
@@ -54,9 +67,66 @@ public class ContextMenu {
     }
 
     public ContextMenu addActionItem(Component label, Runnable action) {
-        this.items.add(new ActionItem(label, action));
+        return push(new ActionItem(label, action));
+    }
+
+    private ContextMenu push(MenuItem item) {
+        this.items.add(item);
+        this.itemDelete.add(null);
         recalcWidth();
         return this;
+    }
+
+    public ContextMenu markLastDeletable(MenuLocation.DeleteRef ref) {
+        if (!this.itemDelete.isEmpty())
+            this.itemDelete.set(this.itemDelete.size() - 1, ref);
+        return this;
+    }
+
+    public ContextMenu addAddItem(MenuLocation container) {
+        if (!EDIT_ENABLED) return this;
+        ContextMenu sub = new ContextMenu(0, 0, this.player);
+        sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_submenu"), () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(new AddSubmenuScreen(mc.screen, container));
+        });
+        sub.addActionItem(Component.translatable("hbtweaks.context.editor.add_command"), () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.setScreen(new AddCommandScreen(mc.screen, container));
+        });
+        return push(new AddMenuItem(
+                Component.translatable("hbtweaks.context.editor.add").withStyle(ChatFormatting.GREEN), sub));
+    }
+
+    private static ContextMenu submenuOf(MenuItem item) {
+        if (item instanceof SubmenuItem si) return si.submenu;
+        if (item instanceof AddMenuItem ai) return ai.submenu;
+        return null;
+    }
+
+    public ContextMenu withEditToggle() {
+        this.hasEditToggle = EDIT_ENABLED;
+        return this;
+    }
+
+    private int effectiveItemCount() {
+        int n = this.items.size();
+        if (!editMode && n > 0 && this.items.get(n - 1) instanceof AddMenuItem) n--;
+        return n;
+    }
+
+    private int toggleX() {
+        return this.x + 1;
+    }
+
+    private int toggleY() {
+        return this.y + effectiveItemCount() * ContextMenu.ITEM_HEIGHT + TOGGLE_GAP;
+    }
+
+    private boolean isInsideToggle(int mx, int my) {
+        int sx = toggleX();
+        int sy = toggleY();
+        return mx >= sx && mx < sx + TOGGLE_SIZE && my >= sy && my < sy + TOGGLE_SIZE;
     }
 
     public Player getPlayer() {
@@ -68,9 +138,7 @@ public class ContextMenu {
     }
 
     public ContextMenu addCommandItem(Component label, String commandTemplate) {
-        this.items.add(new CommandItem(label, commandTemplate, player));
-        recalcWidth();
-        return this;
+        return push(new CommandItem(label, commandTemplate, player));
     }
 
     public ContextMenu addInfoItem(String label) {
@@ -78,9 +146,7 @@ public class ContextMenu {
     }
 
     public ContextMenu addInfoItem(Component label) {
-        this.items.add(new InfoItem(label));
-        recalcWidth();
-        return this;
+        return push(new InfoItem(label));
     }
 
     public ContextMenu addSubmenuItem(String label, ContextMenu submenu) {
@@ -88,15 +154,11 @@ public class ContextMenu {
     }
 
     public ContextMenu addSubmenuItem(Component label, ContextMenu submenu) {
-        this.items.add(new SubmenuItem(label, submenu));
-        recalcWidth();
-        return this;
+        return push(new SubmenuItem(label, submenu));
     }
 
     public ContextMenu addItemStackItem(ItemStack stack) {
-        this.items.add(new ItemStackMenuItem(stack));
-        recalcWidth();
-        return this;
+        return push(new ItemStackMenuItem(stack));
     }
 
     public ContextMenu addLinkItem(String label, String url) {
@@ -104,9 +166,7 @@ public class ContextMenu {
     }
 
     public ContextMenu addLinkItem(Component label, String url) {
-        this.items.add(new LinkItem(label, url));
-        recalcWidth();
-        return this;
+        return push(new LinkItem(label, url));
     }
 
     public ContextMenu addCopyItem(String label, String text) {
@@ -114,9 +174,7 @@ public class ContextMenu {
     }
 
     public ContextMenu addCopyItem(Component label, String text) {
-        this.items.add(new CopyItem(label, text));
-        recalcWidth();
-        return this;
+        return push(new CopyItem(label, text));
     }
 
     public void open() {
@@ -148,29 +206,31 @@ public class ContextMenu {
 
         Minecraft mc = Minecraft.getInstance();
 
-        int totalHeight = this.items.size() * ContextMenu.ITEM_HEIGHT;
+        int itemCount = effectiveItemCount();
+        int itemsHeight = itemCount * ContextMenu.ITEM_HEIGHT;
+        int footprint = itemsHeight + (this.hasEditToggle ? TOGGLE_GAP + TOGGLE_SIZE : 0);
 
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();
         this.x = Math.min(this.x, screenW - this.width - 1);
-        this.y = Math.min(this.y, screenH - totalHeight - 1);
+        this.y = Math.min(this.y, screenH - footprint - 1);
 
         graphics.fill(this.x - 1,
                 this.y - 1,
                 this.x + this.width + 1,
-                this.y + totalHeight + 1,
+                this.y + itemsHeight + 1,
                 ContextMenu.COLOR_BORDER);
         graphics.fill(this.x,
                 this.y,
                 this.x + this.width,
-                this.y + totalHeight,
+                this.y + itemsHeight,
                 ContextMenu.COLOR_BG);
 
         ContextMenu nextSubmenu = null;
         int nextSubmenuIndex = -1;
         ItemStack hoveredStack = null;
 
-        for (int i = 0; i < this.items.size(); i++) {
+        for (int i = 0; i < itemCount; i++) {
             MenuItem item = this.items.get(i);
             int itemY = this.y + i * ContextMenu.ITEM_HEIGHT;
 
@@ -198,13 +258,26 @@ public class ContextMenu {
                         this.x + ContextMenu.PADDING_X, itemY + 4, textColor, false);
             }
 
-            if (item instanceof SubmenuItem si) {
+            ContextMenu sub = submenuOf(item);
+            if (sub != null) {
                 graphics.text(mc.font, ">", this.x + this.width - ContextMenu.ARROW_RIGHT_PAD, itemY + 4, textColor, false);
                 if (hovered) {
-                    nextSubmenu = si.submenu;
+                    nextSubmenu = sub;
                     nextSubmenuIndex = i;
                 }
             }
+        }
+
+        if (this.hasEditToggle) {
+            int sx = toggleX();
+            int sy = toggleY();
+            boolean tHover = mouseX >= sx && mouseX < sx + TOGGLE_SIZE && mouseY >= sy && mouseY < sy + TOGGLE_SIZE;
+            graphics.fill(sx - 1, sy - 1, sx + TOGGLE_SIZE + 1, sy + TOGGLE_SIZE + 1, ContextMenu.COLOR_BORDER);
+            graphics.fill(sx, sy, sx + TOGGLE_SIZE, sy + TOGGLE_SIZE, tHover ? ContextMenu.COLOR_HOVER : ContextMenu.COLOR_TOGGLE_BG);
+            String glyph = editMode ? "-" : "+";
+            int gw = mc.font.width(glyph);
+            graphics.text(mc.font, glyph, sx + (TOGGLE_SIZE - gw + 1) / 2, sy + 1,
+                    tHover ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT, false);
         }
 
         if (nextSubmenu != null) {
@@ -224,8 +297,6 @@ public class ContextMenu {
         }
 
         if (hoveredStack != null) {
-            // Render the tooltip immediately (on top of the menu) instead of deferring it,
-            // since our menu is drawn after the screen's deferred-tooltip pass.
             List<ClientTooltipComponent> components = new ArrayList<>();
             for (Component line : Screen.getTooltipFromItem(mc, hoveredStack)) {
                 components.add(ClientTooltipComponent.create(line.getVisualOrderText()));
@@ -251,11 +322,17 @@ public class ContextMenu {
         int mx = (int) mouseX;
         int my = (int) mouseY;
 
-        for (int i = 0; i < this.items.size(); i++) {
+        if (this.hasEditToggle && isInsideToggle(mx, my)) {
+            editMode = !editMode;
+            return false;
+        }
+
+        int itemCount = effectiveItemCount();
+        for (int i = 0; i < itemCount; i++) {
             int itemY = this.y + i * ContextMenu.ITEM_HEIGHT;
             if (isInsideRow(mx, my, itemY)) {
                 MenuItem item = this.items.get(i);
-                if (!(item instanceof SubmenuItem) && !(item instanceof InfoItem)) {
+                if (submenuOf(item) == null && !(item instanceof InfoItem)) {
                     item.onClick();
                     close();
                 } else {
@@ -275,19 +352,34 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= this.y
-                && my < this.y + this.items.size() * ContextMenu.ITEM_HEIGHT;
+                && my < this.y + effectiveItemCount() * ContextMenu.ITEM_HEIGHT;
     }
 
     public boolean containsMouseRecursive(int mx, int my) {
         if (this.containsMouse(mx, my))
             return true;
         for (MenuItem m : this.items) {
-            if (m instanceof SubmenuItem) {
-                if (((SubmenuItem)m).submenu.containsMouseRecursive(mx, my))
-                    return true;
-            }
+            ContextMenu sub = submenuOf(m);
+            if (sub != null && sub.containsMouseRecursive(mx, my))
+                return true;
         }
         return false;
+    }
+
+    public MenuLocation.DeleteRef getHoveredDeletable(int mx, int my) {
+        if (!this.visible)
+            return null;
+        if (this.openSubmenu != null) {
+            MenuLocation.DeleteRef r = this.openSubmenu.getHoveredDeletable(mx, my);
+            if (r != null)
+                return r;
+        }
+        int itemCount = effectiveItemCount();
+        for (int i = 0; i < itemCount; i++) {
+            if (isInsideRow(mx, my, this.y + i * ContextMenu.ITEM_HEIGHT))
+                return this.itemDelete.get(i);
+        }
+        return null;
     }
 
     private boolean isInsideRow(int mx, int my, int rowY) {
@@ -302,7 +394,7 @@ public class ContextMenu {
         int max = 0;
         for (MenuItem item : this.items) {
             int lw = mc.font.width(item.getLabel());
-            if (item instanceof SubmenuItem)
+            if (submenuOf(item) != null)
                 lw += ContextMenu.ARROW_RIGHT_PAD + 4;
             if (item instanceof ItemStackMenuItem)
                 lw += ContextMenu.ITEM_HEIGHT; // place pour l'icône 16x16
@@ -421,6 +513,26 @@ public class ContextMenu {
         }
     }
 
+    private static final class AddMenuItem implements MenuItem {
+        private final Component label;
+        final ContextMenu submenu;
+
+        AddMenuItem(Component label, ContextMenu submenu) {
+            this.label = label;
+            this.submenu = submenu;
+        }
+
+        @Override
+        public Component getLabel() {
+            return this.label;
+        }
+
+        @Override
+        public void onClick() {
+            // Nothing
+        }
+    }
+
     private static final class InfoItem implements MenuItem {
         private final Component label;
 
@@ -502,6 +614,7 @@ public class ContextMenu {
 
     public ContextMenu merge(ContextMenu cm) {
         this.items.addAll(cm.items);
+        this.itemDelete.addAll(cm.itemDelete);
         recalcWidth();
         return this;
     }

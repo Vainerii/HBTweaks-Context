@@ -1,0 +1,23 @@
+{
+  "hbtweaks.context.editor.add": "+ Add",
+  "hbtweaks.context.editor.add_submenu": "Submenu",
+  "hbtweaks.context.editor.add_command": "Command",
+  "hbtweaks.context.editor.name": "Name",
+  "hbtweaks.context.editor.command": "Command",
+  "hbtweaks.context.editor.tags": "Tags",
+  "hbtweaks.context.editor.delete_title": "Delete item",
+  "hbtweaks.context.editor.delete_confirm": "Delete \"%s\" ?",
+  "hbtweaks.context.editor.button.add": "Add",
+  "hbtweaks.context.editor.button.cancel": "Cancel",
+  "hbtweaks.context.editor.button.delete": "Delete",
+  "hbtweaks.context.editor.tag.mcname": "target Minecraft name",
+  "hbtweaks.context.editor.tag.rpname": "target RP name",
+  "hbtweaks.context.editor.tag.blockpos": "target block pos",
+  "hbtweaks.context.editor.tag.eyepos": "target eye pos",
+  "hbtweaks.context.editor.tag.uuid": "target UUID",
+  "hbtweaks.context.editor.tag.mymcname": "your Minecraft name",
+  "hbtweaks.context.editor.tag.myrpname": "your RP name",
+  "hbtweaks.context.editor.tag.myblockpos": "your block pos",
+  "hbtweaks.context.editor.tag.myeyepos": "your eye pos",
+  "hbtweaks.context.editor.tag.myuuid": "your UUID"
+}

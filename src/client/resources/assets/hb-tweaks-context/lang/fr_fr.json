@@ -1,0 +1,23 @@
+{
+  "hbtweaks.context.editor.add": "+ Ajouter",
+  "hbtweaks.context.editor.add_submenu": "Sous-menu",
+  "hbtweaks.context.editor.add_command": "Commande",
+  "hbtweaks.context.editor.name": "Nom",
+  "hbtweaks.context.editor.command": "Commande",
+  "hbtweaks.context.editor.tags": "Tags",
+  "hbtweaks.context.editor.delete_title": "Supprimer l'élément",
+  "hbtweaks.context.editor.delete_confirm": "Supprimer \"%s\" ?",
+  "hbtweaks.context.editor.button.add": "Ajouter",
+  "hbtweaks.context.editor.button.cancel": "Annuler",
+  "hbtweaks.context.editor.button.delete": "Supprimer",
+  "hbtweaks.context.editor.tag.mcname": "nom Minecraft de la cible",
+  "hbtweaks.context.editor.tag.rpname": "nom RP de la cible",
+  "hbtweaks.context.editor.tag.blockpos": "position de la cible",
+  "hbtweaks.context.editor.tag.eyepos": "position des yeux de la cible",
+  "hbtweaks.context.editor.tag.uuid": "UUID de la cible",
+  "hbtweaks.context.editor.tag.mymcname": "votre nom Minecraft",
+  "hbtweaks.context.editor.tag.myrpname": "votre nom RP",
+  "hbtweaks.context.editor.tag.myblockpos": "votre position",
+  "hbtweaks.context.editor.tag.myeyepos": "position de vos yeux",
+  "hbtweaks.context.editor.tag.myuuid": "votre UUID"
+}

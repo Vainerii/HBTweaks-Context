@@ -18,12 +18,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.client.contextmenu.ContextMenu;
 import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
+import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
+import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
 import vai.hbtweaks.context.client.mouse.MouseTrackerEntityClickUpCallback;
 import vai.hbtweaks.context.client.mouse.ClickType;
 import vai.hbtweaks.context.client.mouse.ScreenType;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +38,35 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 {
 
     private static ContextMenu contextMenu = null;
-    public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(Paths.get("custom_menu.yml"));
-    public static Map<String, Object> customMenuSelf = CustomContextMenuLoader.readYaml(Paths.get("custom_menu_self.yml"));
+
+    public static final Path CUSTOM_MENU = Paths.get("custom_menu.yml");
+    public static final Path CUSTOM_MENU_SELF = Paths.get("custom_menu_self.yml");
+
+    public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(CUSTOM_MENU);
+    public static Map<String, Object> customMenuSelf = CustomContextMenuLoader.readYaml(CUSTOM_MENU_SELF);
+
+    public static void onFileEdited(Path file, Map<String, Object> root) {
+        if (file.equals(CUSTOM_MENU))
+            customMenu = root;
+        else if (file.equals(CUSTOM_MENU_SELF))
+            customMenuSelf = root;
+    }
+
+    public static boolean handleDelete() {
+        if (!ContextMenu.EDIT_ENABLED || !ContextMenu.editMode || contextMenu == null || !contextMenu.isVisible())
+            return false;
+        Minecraft mc = Minecraft.getInstance();
+        int mx = (int) mc.mouseHandler.getScaledXPos(mc.getWindow());
+        int my = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
+        MenuLocation.DeleteRef ref = contextMenu.getHoveredDeletable(mx, my);
+        if (ref == null)
+            return false;
+        Screen parent = mc.screen;
+        contextMenu.close();
+        contextMenu = null;
+        mc.setScreen(new DeleteConfirmScreen(parent, ref));
+        return true;
+    }
 
     private boolean isCommandAvailable(String command) {
         Minecraft mc = Minecraft.getInstance();
@@ -81,20 +111,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 Minecraft.getInstance().gui.getChat().addClientSystemMessage(Component.literal(e.getValue().value()));
             });
         }
-        /*HerobrinePlayer hbp = HerobrinePlayer.getHerobrinePlayer(player);
-        if (hbp != null) {
-            context.addInfoItem("HbId: " + hbp.getHbId());
-            context.addInfoItem("HbName: " + hbp.getHbName());
-            context.addInfoItem("RpName: " + hbp.getRpName().getString());
-            context.addInfoItem("McName: " + hbp.getMcName());
-            context.addInfoItem("HbTitle: " + hbp.getHbTitle());
-            context.addInfoItem("McLevel: " + hbp.getMcLevel());
-
-            context.addInfoItem("BulbLit: " + hbp.getBulbLit());
-            context.addInfoItem("BulbOff: " + hbp.getBulbOff());
-            context.addInfoItem("BulbBroken: " + hbp.getBulbBroken());
-            context.addInfoItem("BulbShattered: " + hbp.getBulbShattered());
-        }*/
         return context;
     }
 
@@ -120,23 +136,13 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private ContextMenu makeInfoContextMenu(Player player) {
-        //HerobrinePlayer hbp = HerobrinePlayer.getHerobrinePlayer(player);
-        //if (hbp == null) {
+
         PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
         if (pi == null) return null;
         ContextMenu infosContext = new ContextMenu(0, 0, player);
         infosContext.addInfoItem(pi.getTabListDisplayName());
         addMcNameItems(infosContext, player, ContextMenuTrigger.getMCName(player));
         return infosContext;
-        /*} else {
-            ContextMenu infosContext = new ContextMenu(0, 0, player);
-            Component fullName = hbp.getHbTitle() != null
-                    ? Component.literal(hbp.getHbTitle()).append(" ").append(hbp.getRpName())
-                    : hbp.getRpName().copy();
-            infosContext.addInfoItem(fullName);
-            addMcNameItems(infosContext, player, hbp.getMcName());
-            return infosContext;
-        }*/
     }
 
     private void addMcNameItems(ContextMenu menu, Player player, String mcName) {
@@ -172,7 +178,10 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         context.addCommandItem("Stuff", "stuff");
 
         if (ContextMenuTrigger.customMenuSelf != null)
-            context.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenuSelf, Minecraft.getInstance().player));
+            context.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenuSelf, Minecraft.getInstance().player, CUSTOM_MENU_SELF));
+
+        context.addAddItem(new MenuLocation(CUSTOM_MENU_SELF, List.of()));
+        context.withEditToggle();
 
         return context;
     }
@@ -222,11 +231,15 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
             // == Custom ==
             if (ContextMenuTrigger.customMenu != null)
-                ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer));
+                ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
 
             // == Debug ==
             if (hasDev())
                 ContextMenuTrigger.contextMenu.addSubmenuItem("Debug", makeDebugContextMenu(targetPlayer));
+
+            // == Add (edition) ==
+            ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
+            ContextMenuTrigger.contextMenu.withEditToggle();
 
             ContextMenuTrigger.contextMenu.open();
         }
@@ -244,13 +257,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
-        // Drop the menu once it has been closed (clicked away / item selected) or the mouse is grabbed.
         if (contextMenu != null
                 && (!contextMenu.isVisible() || Minecraft.getInstance().mouseHandler.isMouseGrabbed())) {
             contextMenu.close();
             contextMenu = null;
         }
-
         if (contextMenu != null)
             contextMenu.render(graphics, tickDelta);
         else

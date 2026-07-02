@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "hb-tweaks-context",
 	"version": "${version}",
-	"name": "HB Tweaks Context",
+	"name": "HB Tweaks - Context",
 	"description": "Ajoute un menu contextuel pour hb",
 	"authors": [
 		"Vaïnerii"

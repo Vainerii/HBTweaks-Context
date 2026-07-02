@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-// Not used
+// Not used yet
 public class HerobrinePlayer {
 
     private static final WeakHashMap<Player, HerobrinePlayer> CACHE = new WeakHashMap<>();
