@@ -1,15 +1,15 @@
 {
 	"schemaVersion": 1,
-	"id": "hb-tweaks-context",
+	"id": "hb-tweaks",
 	"version": "${version}",
-	"name": "HB Tweaks - Context",
-	"description": "Ajoute un menu contextuel pour hb",
+	"name": "HB Tweaks",
+	"description": "Ajoute des fonctionnalités spéciales pour hb",
 	"authors": [
 		"Vaïnerii"
 	],
 	"contact": {
-		"homepage": "https://modrinth.com/mod/hbtweaks-context",
-		"sources": "https://github.com/Vainerii/HBTweaks-Context"
+		"homepage": "https://modrinth.com/mod/hbtweaks",
+		"sources": "https://github.com/Vainerii/HBTweaks"
 	},
 	"license": "MIT",
 	"icon": "assets/hb-tweaks-context/icon.png",

@@ -94,8 +94,12 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         double height = 2.0 * tanHalfFov;
         double width = height * aspect;
 
-        double xm = mc.mouseHandler.xpos();
-        double ym = mc.mouseHandler.ypos();
+        // Cursor is in screen points; framebuffer is in pixels. On HiDPI (macOS Retina)
+        // they differ by the DPI scale, so convert the cursor to framebuffer pixels.
+        double sx = (double) screenWidth / mc.getWindow().getScreenWidth();
+        double sy = (double) screenHeight / mc.getWindow().getScreenHeight();
+        double xm = mc.mouseHandler.xpos() * sx;
+        double ym = mc.mouseHandler.ypos() * sy;
 
         double x_ndc = (2.0 * xm / screenWidth) - 1.0;
         double y_ndc = 1.0 - (2.0 * ym / screenHeight);

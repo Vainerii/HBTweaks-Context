@@ -36,6 +36,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
 
     private static volatile List<Component> lines = null;
     private static volatile int width = 0;
+    private static volatile Player lastTarget = null;
     private static UUID lastUuid = null;
 
     public void register() {
@@ -72,12 +73,14 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         for (Component c : built)
             w = Math.max(w, font.width(c.getString()));
         lastUuid = target.getUUID();
+        lastTarget = target;
         width = w;
         lines = built;
     }
 
     private static void clear() {
         lastUuid = null;
+        lastTarget = null;
         lines = null;
         width = 0;
     }
@@ -97,16 +100,28 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
     }
 
     private static void render(GuiGraphicsExtractor graphics, DeltaTracker tickDelta) {
-        List<Component> current = lines;
-        if (current == null || current.isEmpty())
+        List<Component> cached = lines;
+        if (cached == null || cached.isEmpty())
             return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof ChatScreen)
             return;
 
         Font font = mc.font;
+        // Rebuild each frame bc of animation & indicators
+        List<Component> current = new ArrayList<>(cached);
+        Player target = lastTarget;
+        int w = width;
+        if (target != null && mc.player != null) {
+            Component line = Util.distanceIndicator(mc.player.position().distanceTo(target.position()))
+                    .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
+                    .append(Util.writingIndicator(target));
+            current.add(line);
+            w = Math.max(w, font.width(line.getString()));
+        }
+
         int n = current.size();
-        int boxW = width + 4;
+        int boxW = w + 4;
         int boxH = n * LINE_HEIGHT + 2;
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();
@@ -122,7 +137,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
 
         int textX = boxX + 2;
         int textY = boxY + 2;
-        graphics.fill(textX - 2, textY - 2, textX + width + 2, textY + n * LINE_HEIGHT, BG_COLOR);
+        graphics.fill(textX - 2, textY - 2, textX + w + 2, textY + n * LINE_HEIGHT, BG_COLOR);
         for (int i = 0; i < n; i++) {
             graphics.text(font, current.get(i), textX, textY + i * LINE_HEIGHT, -1, true);
         }

@@ -54,18 +54,6 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     public static Map<String, Object> customMenu = CustomContextMenuLoader.readYaml(CUSTOM_MENU);
     public static Map<String, Object> customMenuSelf = CustomContextMenuLoader.readYaml(CUSTOM_MENU_SELF);
 
-    private static final Component P_INF = Component.literal("[:]").withStyle(ChatFormatting.WHITE);
-
-    private static final Component P_100 = Component.literal("[!]").withStyle(ChatFormatting.RED);
-
-    private static final Component P_50 = Component.literal("[+]").withStyle(ChatFormatting.YELLOW);
-
-    private static final Component P_20 = Component.literal("[ ]").withStyle(ChatFormatting.GREEN);
-
-    private static final Component P_10 = Component.literal("[-]").withStyle(ChatFormatting.DARK_GREEN);
-
-    private static final Component P_3 = Component.literal("[#]").withStyle(ChatFormatting.DARK_AQUA);
-
     public static void onFileEdited(Path file, Map<String, Object> root) {
         if (file.equals(CUSTOM_MENU))
             customMenu = root;
@@ -338,34 +326,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         double dist = mc.player.position().distanceTo(target.position());
 
-        MutableComponent nameLine = name.copy().append(Component.literal(" - ").withStyle(ChatFormatting.WHITE));
-        if (dist > 100f)
-            nameLine.append(P_INF);
-        else if (dist > 50f)
-            nameLine.append(P_100);
-        else if (dist > 20f)
-            nameLine.append(P_50);
-        else if (dist > 10f)
-            nameLine.append(P_20);
-        else if (dist > 3f)
-            nameLine.append(P_10);
-        else
-            nameLine.append(P_3);
-
-        nameLine.append(Component.literal(" - ").withStyle(ChatFormatting.WHITE));
-
-        boolean writing = WritersBank.isWriting(target);
-        int subtick = mc.gui.getGuiTicks() % 50;
-        for (int i = 1; i <= 3; i++) {
-            int v = 0x30;
-            if (writing) {
-                int level = Math.max(0, 8 - Math.abs(subtick - i * 10));
-                v = 0x30 + level * (0xFF - 0x30) / 8;
-            }
-            nameLine.append(Component.literal("•").withColor(0xFF000000 | (v << 16) | (v << 8) | v));
-        }
-        if (!writing && !WritersBank.alreadyWrote(target))
-            nameLine.append(Component.literal("?").withColor(0xFF303030));
+        MutableComponent nameLine = name.copy()
+                .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
+                .append(Util.distanceIndicator(dist))
+                .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
+                .append(Util.writingIndicator(target));
 
         if (leftDown && !target.getUUID().equals(effectsRequestedFor)) {
             EffectPayloads.requestEffects(target.getUUID());

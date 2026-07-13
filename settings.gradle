@@ -10,4 +10,4 @@ pluginManagement {
 }
 
 // Should match your modid
-rootProject.name = 'hb-tweaks-context'
+rootProject.name = 'hb-tweaks'
