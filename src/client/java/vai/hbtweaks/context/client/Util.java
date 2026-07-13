@@ -8,11 +8,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Player;
+import vai.hbtweaks.context.HBTweaksContext;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 
 public class Util {
 
-    /** Distance tag shown next to a player's name ([:], [!], [+], [ ], [-], [#]). */
     public static MutableComponent distanceIndicator(double dist) {
         if (dist > 100f) return Component.literal("[:]").withStyle(ChatFormatting.WHITE);
         if (dist > 50f)  return Component.literal("[!]").withStyle(ChatFormatting.RED);
@@ -22,7 +22,6 @@ public class Util {
         return Component.literal("[#]").withStyle(ChatFormatting.DARK_AQUA);
     }
 
-    /** Animated 3-dot "is writing" indicator; grey dots when idle, "?" when never seen writing. */
     public static MutableComponent writingIndicator(Player target) {
         MutableComponent out = Component.empty();
         boolean writing = WritersBank.isWriting(target);
@@ -71,12 +70,18 @@ public class Util {
         return getFakeName(player) != null;
     }
 
+    // It's working. but NPC are not simply easy to differentiate from players, so, lets stay vigilant.
     public static boolean isReal(Player player) {
-        LocalPlayer me = Minecraft.getInstance().player;
-        if (me == null) return false;
-        PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
-        if (pi == null) return false;
-        return pi.getTabListDisplayName() != null && !pi.getTabListDisplayName().getString().isEmpty();
+        try {
+            if (player.isNoGravity()) return false;
+            LocalPlayer me = Minecraft.getInstance().player;
+            if (me == null) return false;
+            PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
+            if (pi == null) return false;
+            return pi.getTabListDisplayName() != null && !pi.getTabListDisplayName().getString().isEmpty();
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     public static boolean hasDev() {

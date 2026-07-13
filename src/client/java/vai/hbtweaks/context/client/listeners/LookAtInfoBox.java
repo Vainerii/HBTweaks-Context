@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+import static vai.hbtweaks.context.client.Util.isReal;
+
 public class LookAtInfoBox implements ClientTickEvents.EndTick {
 
     private static final Identifier ID =
@@ -165,7 +167,9 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
                 if (hit.distanceTo(e) < result.distanceTo(e))
                     return null;
             }
-            return (Player) result.getEntity();
+            if (isReal((Player) result.getEntity()))
+                return (Player) result.getEntity();
+            return null;
         } catch (Exception exception) {
             return null;
         }

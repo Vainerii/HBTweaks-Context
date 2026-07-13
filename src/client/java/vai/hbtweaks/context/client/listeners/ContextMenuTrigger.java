@@ -40,8 +40,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-import static vai.hbtweaks.context.client.Util.hasDev;
-import static vai.hbtweaks.context.client.Util.hasPerm;
+import static vai.hbtweaks.context.client.Util.*;
 
 public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, ScreenMouseEvents.AfterMouseClick
 {
@@ -223,6 +222,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                     ContextMenuTrigger.contextMenu.open();
                     return;
                 }
+                if (!isReal(targetPlayer)) return;
 
                 if (mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
                     return;
@@ -330,6 +330,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             }
         }
         if (target == null) return;
+        if (!isReal(target)) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.player.connection.getPlayerInfo(target.getUUID()) == null) return;
