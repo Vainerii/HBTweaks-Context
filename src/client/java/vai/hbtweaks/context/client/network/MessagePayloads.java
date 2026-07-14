@@ -1,106 +1,34 @@
 package vai.hbtweaks.context.client.network;
 
+import fr.herobrine.network.mods.ServerboundHerobrineTweaksHandshakePacket;
+import fr.herobrine.network.speech.ClientboundStartTypingPacket;
+import fr.herobrine.network.speech.ClientboundStopTypingPayload;
+import fr.herobrine.network.speech.ServerboundStartTypingPacket;
+import fr.herobrine.network.speech.ServerboundStopTypingPacket;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.NonNull;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
-
-import java.util.UUID;
 
 public final class MessagePayloads {
 
+    private MessagePayloads() {}
+
     public static void init() {
-        PayloadTypeRegistry.serverboundPlay().register(HandshakePayload.ID, HandshakePayload.CODEC);
-        PayloadTypeRegistry.serverboundPlay().register(StartTypingPayload.ID, StartTypingPayload.CODEC);
-        PayloadTypeRegistry.serverboundPlay().register(StopTypingPayload.ID, StopTypingPayload.CODEC);
+        Packets.registerC2S(ServerboundHerobrineTweaksHandshakePacket.PACKET_INFO);
+        Packets.registerC2S(ServerboundStartTypingPacket.PACKET_INFO);
+        Packets.registerC2S(ServerboundStopTypingPacket.PACKET_INFO);
 
-        PayloadTypeRegistry.clientboundPlay().register(PlayerStartTypingPayload.ID, PlayerStartTypingPayload.CODEC);
-        PayloadTypeRegistry.clientboundPlay().register(PlayerStopTypingPayload.ID, PlayerStopTypingPayload.CODEC);
+        Packets.registerS2C(ClientboundStartTypingPacket.PACKET_INFO);
+        ClientPlayNetworking.registerGlobalReceiver(Packets.type(ClientboundStartTypingPacket.PACKET_INFO),
+                (packet, _) -> WritersBank.startWriting(packet.getPlayer()));
 
-        ClientPlayNetworking.registerGlobalReceiver(PlayerStartTypingPayload.ID, (payload, _) ->
-                WritersBank.startWriting(payload.player()));
-        ClientPlayNetworking.registerGlobalReceiver(PlayerStopTypingPayload.ID, (payload, _) ->
-                WritersBank.stopWriting(payload.player()));
+        Packets.registerS2C(ClientboundStopTypingPayload.PACKET_INFO);
+        ClientPlayNetworking.registerGlobalReceiver(Packets.type(ClientboundStopTypingPayload.PACKET_INFO),
+                (packet, _) -> WritersBank.stopWriting(packet.getPlayer()));
 
         ClientPlayConnectionEvents.JOIN.register((_, _, _) -> {
-            if (ClientPlayNetworking.canSend(HandshakePayload.ID)) ClientPlayNetworking.send(new HandshakePayload());
+            if (ClientPlayNetworking.canSend(Packets.type(ServerboundHerobrineTweaksHandshakePacket.PACKET_INFO)))
+                ClientPlayNetworking.send(new ServerboundHerobrineTweaksHandshakePacket());
         });
     }
-
-    // === Handshake (C->S)
-    public record HandshakePayload() implements CustomPacketPayload {
-
-        public static final CustomPacketPayload.Type<HandshakePayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:hbtweaks/handshake"));
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, HandshakePayload> CODEC =
-                StreamCodec.unit(new HandshakePayload());
-
-        @Override public @NonNull Type<HandshakePayload> type() { return ID; }
-    }
-
-    // === Start typing (C->S) [str text]
-    public record StartTypingPayload(String text) implements CustomPacketPayload {
-
-        public static final CustomPacketPayload.Type<StartTypingPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:speech/start_typing"));
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, StartTypingPayload> CODEC =
-                StreamCodec.composite(
-                        ByteBufCodecs.STRING_UTF8, StartTypingPayload::text,
-                        StartTypingPayload::new
-                );
-
-        @Override public @NonNull Type<StartTypingPayload> type() { return ID; }
-    }
-
-    // === Stop typing (C->S)
-    public record StopTypingPayload() implements CustomPacketPayload {
-
-        public static final CustomPacketPayload.Type<StopTypingPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:speech/stop_typing"));
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, StopTypingPayload> CODEC =
-                StreamCodec.unit(new StopTypingPayload());
-
-        @Override public @NonNull Type<StopTypingPayload> type() { return ID; }
-    }
-
-    // === Player start typing (S->C) : [uuid player]
-    public record PlayerStartTypingPayload(UUID player) implements CustomPacketPayload {
-
-        public static final CustomPacketPayload.Type<PlayerStartTypingPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:speech/player_start_typing"));
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, PlayerStartTypingPayload> CODEC =
-                StreamCodec.composite(
-                        UUIDUtil.STREAM_CODEC, PlayerStartTypingPayload::player,
-                        PlayerStartTypingPayload::new
-                );
-
-        @Override public @NonNull Type<PlayerStartTypingPayload> type() { return ID; }
-    }
-
-    // === Player stop typing (S->C) : [uuid player]
-    public record PlayerStopTypingPayload(UUID player) implements CustomPacketPayload {
-
-        public static final CustomPacketPayload.Type<PlayerStopTypingPayload> ID =
-                new CustomPacketPayload.Type<>(Identifier.parse("herobrine:speech/player_stop_typing"));
-
-        public static final StreamCodec<RegistryFriendlyByteBuf, PlayerStopTypingPayload> CODEC =
-                StreamCodec.composite(
-                        UUIDUtil.STREAM_CODEC, PlayerStopTypingPayload::player,
-                        PlayerStopTypingPayload::new
-                );
-
-        @Override public @NonNull Type<PlayerStopTypingPayload> type() { return ID; }
-    }
-
 }

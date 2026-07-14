@@ -4,7 +4,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screens.ChatScreen;
-import vai.hbtweaks.context.client.network.MessagePayloads;
+import fr.herobrine.network.speech.ServerboundStartTypingPacket;
+import fr.herobrine.network.speech.ServerboundStopTypingPacket;
 
 public class WritingStatusSender {
 
@@ -51,14 +52,10 @@ public class WritingStatusSender {
     }
 
     private static void sendTyping() {
-        ClientPlayNetworking.send(new MessagePayloads.StartTypingPayload(WritingObserver.getText().substring(0, 5)));
-        //HBTweaksContext.LOGGER.info("[STARTED TYPING]");
-        //WritersBank.startWriting(Minecraft.getInstance().player.getUUID());
+        ClientPlayNetworking.send(new ServerboundStartTypingPacket(WritingObserver.getText().substring(0, 5)));
     }
 
     private static void sendStopTyping() {
-        ClientPlayNetworking.send(new MessagePayloads.StopTypingPayload());
-        //HBTweaksContext.LOGGER.info("[ENDED TYPING]");
-        //WritersBank.stopWriting(Minecraft.getInstance().player.getUUID());
+        ClientPlayNetworking.send(new ServerboundStopTypingPacket());
     }
 }

@@ -50,6 +50,10 @@ dependencies {
 	implementation("com.terraformersmc:modmenu:${project.modmenu_version}")
 
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	implementation("net.fabricmc:fabric-language-kotlin:1.13.12+kotlin.2.4.0")
+
+	include(implementation("fr.herobrine:networking:1.0.4"))
 }
 
 processResources {
