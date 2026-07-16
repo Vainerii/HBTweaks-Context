@@ -56,6 +56,6 @@ public class WritingStatusSender {
     }
 
     private static void sendStopTyping() {
-        ClientPlayNetworking.send(new ServerboundStopTypingPacket());
+        ClientPlayNetworking.send(ServerboundStopTypingPacket.INSTANCE);
     }
 }

@@ -7,8 +7,9 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.objects.PlayerSprite;
 import net.minecraft.world.entity.player.Player;
-import vai.hbtweaks.context.HBTweaksContext;
+import net.minecraft.world.item.component.ResolvableProfile;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
 
 public class Util {
@@ -25,11 +26,11 @@ public class Util {
     public static MutableComponent writingIndicator(Player target) {
         MutableComponent out = Component.empty();
         boolean writing = WritersBank.isWriting(target);
-        int subtick = Minecraft.getInstance().gui.getGuiTicks() % 50;
+        int subtick = Minecraft.getInstance().gui.getGuiTicks() % 32;
         for (int i = 1; i <= 3; i++) {
             int v = 0x30;
             if (writing) {
-                int level = Math.max(0, 8 - Math.abs(subtick - i * 10)); // evolution over 8 ticks, peak at i*10
+                int level = Math.max(0, 8 - Math.abs(subtick - i * 8)); // evolution over 8 ticks, peak at i*8
                 v = 0x30 + level * (0xFF - 0x30) / 8;
             }
             out.append(Component.literal("•").withColor(0xFF000000 | (v << 16) | (v << 8) | v));
@@ -48,13 +49,26 @@ public class Util {
     }
 
     public static Component getRpName(Player player) {
-        LocalPlayer me = Minecraft.getInstance().player;
-        if (me == null) return null;
-        PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
-        if (pi == null) return null;
-        return pi.getTabListDisplayName();
+        try {
+            LocalPlayer me = Minecraft.getInstance().player;
+            if (me == null) return null;
+            PlayerInfo pi = me.connection.getPlayerInfo(player.getUUID());
+            if (pi == null) return null;
+            return pi.getTabListDisplayName();
+        } catch (Exception ignored) {
+            return Component.empty();
+        }
     }
 
+    public static Component getHead(Player player) {
+        try {
+            PlayerInfo pi = Minecraft.getInstance().player.connection.getPlayerInfo(player.getUUID());
+            ResolvableProfile rp = ResolvableProfile.createResolved(pi.getProfile());
+            return Component.object(new PlayerSprite(rp, true)).append(Component.literal(" "));
+        } catch (Exception ignored) {
+            return Component.empty();
+        }
+    }
 
     public static String getFakeName(Player player) {
         LocalPlayer me = Minecraft.getInstance().player;

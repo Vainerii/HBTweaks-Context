@@ -1,5 +1,6 @@
 package vai.hbtweaks.context.client.listeners;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -12,6 +13,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
@@ -47,6 +49,12 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static ContextMenu contextMenu = null;
     private static java.util.UUID effectsRequestedFor = null;
+
+    private static ContextMenuTrigger instance;
+
+    public ContextMenuTrigger() {
+        instance = this;
+    }
 
     public static final Path CUSTOM_MENU = Paths.get("custom_menu.yml");
     public static final Path CUSTOM_MENU_SELF = Paths.get("custom_menu_self.yml");
@@ -215,7 +223,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
             try {
                 Entity target = list.isEmpty() ? null : list.getFirst();
-                if (!(target instanceof Player targetPlayer)) {
+                if (!(target instanceof Player targetPlayer) || targetPlayer.isInvisible()) {
                     if (ContextMenuTrigger.contextMenu != null)
                         ContextMenuTrigger.contextMenu.close();
                     ContextMenuTrigger.contextMenu = makeSelfContextMenu(mc.player, x, y);
@@ -223,51 +231,64 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                     return;
                 }
                 if (!isReal(targetPlayer)) return;
-
-                if (mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
-                    return;
-
-                if (ContextMenuTrigger.contextMenu != null)
-                    ContextMenuTrigger.contextMenu.close();
-
-                ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
-
-                // == Infos ==
-                addSubmenuIfPresent("Infos", makeInfoContextMenu(targetPlayer));
-
-                // == Reput ==
-                if (isCommandAvailable("reputok"))
-                    addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
-
-                // == Avis ==
-                if (isCommandAvailable("avisok"))
-                    addSubmenuIfPresent("Avis", makeAvisContextMenu(targetPlayer));
-
-                // == Items ==
-                if (hasPerm())
-                    addSubmenuIfPresent("Items", makeInvContextMenu(targetPlayer));
-
-                // == Custom ==
-                if (ContextMenuTrigger.customMenu != null)
-                    ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
-
-                // == Debug ==
-                if (hasDev())
-                    addSubmenuIfPresent("Debug", makeDebugContextMenu(targetPlayer));
-
-                // == Test (temporary) ==
-                //addSubmenuIfPresent("Test", makeTestContextMenu(targetPlayer));
-
-                // == Add (edition) ==
-                ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
-                ContextMenuTrigger.contextMenu.withEditToggle();
-
-                ContextMenuTrigger.contextMenu.open();
+                openForPlayer(targetPlayer, x, y);
             } catch (Exception e) {
                 HBTweaksContext.LOGGER.error("Failed to open context menu", e);
                 dispose();
             }
         }
+    }
+
+    public void openForPlayer(Player targetPlayer, int x, int y) {
+        openForPlayer(targetPlayer, x, y, true);
+    }
+
+    public void openForPlayer(Player targetPlayer, int x, int y, boolean loaded) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection.getPlayerInfo(targetPlayer.getUUID()) == null)
+            return;
+        try {
+            if (ContextMenuTrigger.contextMenu != null)
+                ContextMenuTrigger.contextMenu.close();
+
+            ContextMenuTrigger.contextMenu = new ContextMenu(x, y, targetPlayer);
+
+            addSubmenuIfPresent("Infos", makeInfoContextMenu(targetPlayer));
+            if (isCommandAvailable("reputok"))
+                addSubmenuIfPresent("Reput", makeReputContextMenu(targetPlayer));
+            if (isCommandAvailable("avisok"))
+                addSubmenuIfPresent("Avis", makeAvisContextMenu(targetPlayer));
+            if (loaded && hasPerm())
+                addSubmenuIfPresent("Items", makeInvContextMenu(targetPlayer));
+            if (ContextMenuTrigger.customMenu != null)
+                ContextMenuTrigger.contextMenu.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenu, targetPlayer, CUSTOM_MENU));
+            if (hasDev())
+                addSubmenuIfPresent("Debug", makeDebugContextMenu(targetPlayer));
+
+            ContextMenuTrigger.contextMenu.addAddItem(new MenuLocation(CUSTOM_MENU, List.of()));
+            ContextMenuTrigger.contextMenu.withEditToggle();
+            ContextMenuTrigger.contextMenu.open();
+        } catch (Exception e) {
+            HBTweaksContext.LOGGER.error("Failed to open context menu", e);
+            dispose();
+        }
+    }
+
+    public static void openMenuFor(Player target, int x, int y) {
+        if (instance != null)
+            instance.openForPlayer(target, x, y, true);
+    }
+
+    /** Opens the menu for connected but unloaded player */
+    public static void openMenuForRemote(GameProfile profile, int x, int y) {
+        Minecraft mc = Minecraft.getInstance();
+        if (instance == null || mc.level == null)
+            return;
+        instance.openForPlayer(new RemotePlayer(mc.level, profile), x, y, false);
+    }
+
+    public static boolean isMenuOver(double mx, double my) {
+        return contextMenu != null && contextMenu.isVisible() && contextMenu.containsMouseRecursive((int) mx, (int) my);
     }
 
     private static void addSubmenuIfPresent(String label, ContextMenu submenu) {
@@ -321,10 +342,11 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     }
 
     private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
+        if (Minecraft.getInstance().options.hideGui) return;
         if (isMouseOverChat()) return;
         Player target = null;
         for (Entity e : MouseTracker.getHoveredEntities()) {
-            if (e instanceof Player p) {
+            if (e instanceof Player p && !p.isInvisible()) {
                 target = p;
                 break;
             }
@@ -340,6 +362,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         double dist = mc.player.position().distanceTo(target.position());
 
+        name = Util.getHead(target).copy().append(name);
         MutableComponent nameLine = name.copy()
                 .append(Component.literal(" - ").withStyle(ChatFormatting.WHITE))
                 .append(Util.distanceIndicator(dist))
@@ -368,7 +391,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         for (Component c : lines)
             textW = Math.max(textW, mc.font.width(c));
         int boxW = textW + pad * 2;
-        int boxH = lineH * lines.size() + pad * 2;
+        int boxH = lineH * lines.size() + pad * 2 - 1;
         int margin = 5;
         int screenW = mc.getWindow().getGuiScaledWidth();
         int screenH = mc.getWindow().getGuiScaledHeight();
@@ -384,6 +407,9 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
                 boxY = (int) mc.mouseHandler.getScaledYPos(mc.getWindow()) + 8;
             }
         }
+
+        boxX = Math.max(margin, Math.min(boxX, screenW - boxW - margin));
+        boxY = Math.max(margin, Math.min(boxY, screenH - boxH - margin));
 
         graphics.fill(boxX - 1, boxY - 1, boxX + boxW + 1, boxY + boxH + 1, 0xFF3A3A3A);
         graphics.fill(boxX, boxY, boxX + boxW, boxY + boxH, 0xE0101010);

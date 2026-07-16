@@ -8,7 +8,6 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
@@ -73,7 +72,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         Font font = mc.font;
         int w = 0;
         for (Component c : built)
-            w = Math.max(w, font.width(c.getString()));
+            w = Math.max(w, font.width(c));
         lastUuid = target.getUUID();
         lastTarget = target;
         width = w;
@@ -90,7 +89,8 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
     private static List<Component> buildLines(Player player) {
         List<Component> out = new ArrayList<>();
         Component rp = Util.getRpName(player);
-        if (rp != null)
+        rp = Util.getHead(player).copy().append(rp);
+        if (!rp.getString().isEmpty())
             out.add(rp);
         String mc = Util.getMCName(player);
         if (mc != null)
@@ -112,8 +112,6 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         if (cached == null || cached.isEmpty())
             return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.screen instanceof ChatScreen)
-            return;
 
         Font font = mc.font;
         // Rebuild each frame bc of animation & indicators

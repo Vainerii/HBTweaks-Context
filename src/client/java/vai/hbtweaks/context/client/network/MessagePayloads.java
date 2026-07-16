@@ -28,7 +28,7 @@ public final class MessagePayloads {
 
         ClientPlayConnectionEvents.JOIN.register((_, _, _) -> {
             if (ClientPlayNetworking.canSend(Packets.type(ServerboundHerobrineTweaksHandshakePacket.PACKET_INFO)))
-                ClientPlayNetworking.send(new ServerboundHerobrineTweaksHandshakePacket());
+                ClientPlayNetworking.send(ServerboundHerobrineTweaksHandshakePacket.INSTANCE);
         });
     }
 }

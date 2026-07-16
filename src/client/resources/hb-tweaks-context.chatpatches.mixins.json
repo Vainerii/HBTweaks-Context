@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "vai.hbtweaks.context.client.chatpatches.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"ChatMessageMenuMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

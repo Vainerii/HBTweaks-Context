@@ -458,6 +458,13 @@ public class ContextMenu {
             if (pi == null)
                 return;
 
+            boolean needsPos = this.command.contains("%blockpos%") || this.command.contains("%eyepos%");
+            if (needsPos && (mc.level == null || mc.level.getPlayerByUUID(playerUUID) == null)) {
+                mc.gui.getChat().addClientSystemMessage(
+                        Component.literal("Le joueur est trop loin pour exécuter cette commande.").withStyle(ChatFormatting.RED));
+                return;
+            }
+
             String c = replaceString(this.command, player);
 
             //HBTweaksContext.LOGGER.info("COMMAND RUN : " + c);

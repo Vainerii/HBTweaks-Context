@@ -29,6 +29,10 @@
 		{
 			"config": "hb-tweaks-context.client.mixins.json",
 			"environment": "client"
+		},
+		{
+			"config": "hb-tweaks-context.chatpatches.mixins.json",
+			"environment": "client"
 		}
 	],
 	"depends": {
