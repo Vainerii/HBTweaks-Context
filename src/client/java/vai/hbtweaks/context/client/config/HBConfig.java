@@ -12,6 +12,8 @@ public class HBConfig {
 
     public enum BoxPosition { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT }
 
+    public enum MenuStyle { NORMAL, MINIMAL }
+
     public static final ConfigClassHandler<HBConfig> HANDLER =
             ConfigClassHandler.createBuilder(HBConfig.class)
                     .id(Identifier.fromNamespaceAndPath("hb-tweaks-context", "config"))
@@ -28,4 +30,5 @@ public class HBConfig {
     @SerialEntry public HoverLocation hoverLocation = HoverLocation.MOUSE;
     @SerialEntry public BoxPosition boxPosition = BoxPosition.TOP_LEFT;
     @SerialEntry public boolean hidePlusBox = false;
+    @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
 }

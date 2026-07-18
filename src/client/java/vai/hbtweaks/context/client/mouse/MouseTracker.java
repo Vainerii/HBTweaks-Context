@@ -2,6 +2,7 @@ package vai.hbtweaks.context.client.mouse;
 
 import com.google.common.base.Predicates;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.world.entity.Entity;
@@ -11,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.joml.Vector3fc;
 import org.lwjgl.glfw.GLFW;
 import vai.hbtweaks.context.client.Util;
 
@@ -41,10 +43,11 @@ public class MouseTracker implements ClientTickEvents.EndTick {
     }
 
     private List<Entity> getRayCastedEntities(Vec3 rayDirection) {
-        Entity ce = Minecraft.getInstance().getCameraEntity();
+        Minecraft mc = Minecraft.getInstance();
+        Entity ce = mc.getCameraEntity();
         if (ce == null) return List.of();
 
-        Vec3 origin = ce.getEyePosition();
+        Vec3 origin = mc.gameRenderer.getMainCamera().position();
         Vec3 end = origin.add(rayDirection.normalize().scale(256.0));
         AABB searchBox = new AABB(origin, end).inflate(1.0D);
         ArrayList<Map.Entry<Double, Entity>> resultMap = new ArrayList<>();
@@ -82,13 +85,13 @@ public class MouseTracker implements ClientTickEvents.EndTick {
 
     private Vec3 pixelRayCast() {
         Minecraft mc = Minecraft.getInstance();
-        Entity camera = mc.getCameraEntity();
-        if (camera == null)
+        Camera camera = mc.gameRenderer.getMainCamera();
+        if (!camera.isInitialized())
             return null;
 
         int screenWidth = mc.getWindow().getWidth();
         int screenHeight = mc.getWindow().getHeight();
-        double fov = Math.toRadians(mc.gameRenderer.getMainCamera().getFov());
+        double fov = Math.toRadians(camera.getFov());
         double aspect = (double) screenWidth / screenHeight;
         double tanHalfFov = Math.tan(fov / 2.0);
         double height = 2.0 * tanHalfFov;
@@ -107,21 +110,17 @@ public class MouseTracker implements ClientTickEvents.EndTick {
         double x_cam = x_ndc * (width / 2.0);
         double y_cam = y_ndc * (height / 2.0);
 
-        float yaw = (float) Math.toRadians(camera.getYRot());
-        float pitch = (float) Math.toRadians(camera.getXRot());
+        Vector3fc fwd = camera.forwardVector();
+        Vector3fc upv = camera.upVector();
+        Vector3fc leftv = camera.leftVector();
 
-        double cosYaw = Math.cos(yaw);
-        double sinYaw = Math.sin(yaw);
-        double cosPitch = Math.cos(pitch);
-        double sinPitch = Math.sin(pitch);
-
-        Vec3 forward = new Vec3(-sinYaw * cosPitch, -sinPitch, cosYaw * cosPitch);
-        Vec3 right = new Vec3(-cosYaw, 0, -sinYaw);
-        Vec3 up = right.cross(forward).normalize();
+        Vec3 forward = new Vec3(fwd.x(), fwd.y(), fwd.z());
+        Vec3 right = new Vec3(-leftv.x(), -leftv.y(), -leftv.z());
+        Vec3 up = new Vec3(upv.x(), upv.y(), upv.z());
 
         return right.scale(x_cam)
                 .add(up.scale(y_cam))
-                .add(forward.scale(1.0D))
+                .add(forward)
                 .normalize();
     }
 

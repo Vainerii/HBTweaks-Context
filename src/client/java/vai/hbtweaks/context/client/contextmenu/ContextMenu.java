@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import vai.hbtweaks.context.HBTweaksContext;
+import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.contextmenu.editor.AddCommandScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.AddSubmenuScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
@@ -26,10 +27,8 @@ import java.util.UUID;
 
 public class ContextMenu {
 
-    private static final int ITEM_HEIGHT = 16;
-    private static final int PADDING_X = 6;
     private static final int MIN_WIDTH = 20;
-    private static final int ARROW_RIGHT_PAD = 8;
+    private static final int ICON_SIZE = 16;
 
     private static final int COLOR_TEXT = 0xFFE0E0E0;
     private static final int COLOR_TEXT_HOVER = 0xFFFFFFFF;
@@ -40,6 +39,11 @@ public class ContextMenu {
 
     private static final int TOGGLE_SIZE = 9;
     private static final int TOGGLE_GAP = 1;
+
+    private final int itemHeight;
+    private final int paddingX;
+    private final int arrowRightPad;
+    private final int textOffsetY;
 
     private int x;
     private int y;
@@ -60,6 +64,12 @@ public class ContextMenu {
         this.x = x;
         this.y = y;
         this.player = target;
+
+        boolean minimal = HBConfig.get().menuStyle == HBConfig.MenuStyle.MINIMAL;
+        this.itemHeight = minimal ? 12 : 16;
+        this.paddingX = minimal ? 4 : 6;
+        this.arrowRightPad = minimal ? 6 : 8;
+        this.textOffsetY = minimal ? 2 : 4;
     }
 
     public ContextMenu addActionItem(String label, Runnable action) {
@@ -121,7 +131,7 @@ public class ContextMenu {
     }
 
     private int toggleY() {
-        return this.y + effectiveItemCount() * ContextMenu.ITEM_HEIGHT + TOGGLE_GAP;
+        return this.y + effectiveItemCount() * this.itemHeight + TOGGLE_GAP;
     }
 
     private boolean isInsideToggle(int mx, int my) {
@@ -208,7 +218,7 @@ public class ContextMenu {
         Minecraft mc = Minecraft.getInstance();
 
         int itemCount = effectiveItemCount();
-        int itemsHeight = itemCount * ContextMenu.ITEM_HEIGHT;
+        int itemsHeight = itemCount * this.itemHeight;
         int footprint = itemsHeight + (this.hasEditToggle ? TOGGLE_GAP + TOGGLE_SIZE : 0);
 
         int screenW = mc.getWindow().getGuiScaledWidth();
@@ -233,7 +243,7 @@ public class ContextMenu {
 
         for (int i = 0; i < itemCount; i++) {
             MenuItem item = this.items.get(i);
-            int itemY = this.y + i * ContextMenu.ITEM_HEIGHT;
+            int itemY = this.y + i * this.itemHeight;
 
             boolean hovered = isInsideRow(mouseX, mouseY, itemY);
             if (item instanceof InfoItem) {
@@ -241,27 +251,27 @@ public class ContextMenu {
             }
 
             if (hovered) {
-                graphics.fill(this.x, itemY, this.x + this.width, itemY + ContextMenu.ITEM_HEIGHT, ContextMenu.COLOR_HOVER);
+                graphics.fill(this.x, itemY, this.x + this.width, itemY + this.itemHeight, ContextMenu.COLOR_HOVER);
             }
 
             int textColor = hovered ? ContextMenu.COLOR_TEXT_HOVER : ContextMenu.COLOR_TEXT;
 
             if (item instanceof ItemStackMenuItem ism) {
-                graphics.item(ism.stack, this.x + ContextMenu.PADDING_X, itemY);
+                graphics.item(ism.stack, this.x + this.paddingX, itemY);
                 graphics.text(mc.font, item.getLabel(),
-                        this.x + ContextMenu.PADDING_X + ContextMenu.ITEM_HEIGHT + 2,
-                        itemY + 4, textColor, false);
+                        this.x + this.paddingX + ContextMenu.ICON_SIZE + 2,
+                        itemY + this.textOffsetY, textColor, false);
                 if (hovered) {
                     hoveredStack = ism.stack; // on mémorise, on ne rend pas encore
                 }
             } else {
                 graphics.text(mc.font, item.getLabel(),
-                        this.x + ContextMenu.PADDING_X, itemY + 4, textColor, false);
+                        this.x + this.paddingX, itemY + this.textOffsetY, textColor, false);
             }
 
             ContextMenu sub = submenuOf(item);
             if (sub != null) {
-                graphics.text(mc.font, ">", this.x + this.width - ContextMenu.ARROW_RIGHT_PAD, itemY + 4, textColor, false);
+                graphics.text(mc.font, ">", this.x + this.width - this.arrowRightPad, itemY + this.textOffsetY, textColor, false);
                 if (hovered) {
                     nextSubmenu = sub;
                     nextSubmenuIndex = i;
@@ -287,7 +297,7 @@ public class ContextMenu {
                     this.openSubmenu.close();
                 this.openSubmenu = nextSubmenu;
                 this.openSubmenu.x = this.x + this.width;
-                this.openSubmenu.y = this.y + nextSubmenuIndex * ContextMenu.ITEM_HEIGHT;
+                this.openSubmenu.y = this.y + nextSubmenuIndex * this.itemHeight;
                 this.openSubmenu.open();
             }
         } else {
@@ -330,7 +340,7 @@ public class ContextMenu {
 
         int itemCount = effectiveItemCount();
         for (int i = 0; i < itemCount; i++) {
-            int itemY = this.y + i * ContextMenu.ITEM_HEIGHT;
+            int itemY = this.y + i * this.itemHeight;
             if (isInsideRow(mx, my, itemY)) {
                 MenuItem item = this.items.get(i);
                 if (submenuOf(item) == null && !(item instanceof InfoItem)) {
@@ -353,7 +363,7 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= this.y
-                && my < this.y + effectiveItemCount() * ContextMenu.ITEM_HEIGHT;
+                && my < this.y + effectiveItemCount() * this.itemHeight;
     }
 
     public boolean containsMouseRecursive(int mx, int my) {
@@ -377,7 +387,7 @@ public class ContextMenu {
         }
         int itemCount = effectiveItemCount();
         for (int i = 0; i < itemCount; i++) {
-            if (isInsideRow(mx, my, this.y + i * ContextMenu.ITEM_HEIGHT))
+            if (isInsideRow(mx, my, this.y + i * this.itemHeight))
                 return this.itemDelete.get(i);
         }
         return null;
@@ -387,7 +397,7 @@ public class ContextMenu {
         return mx >= this.x
                 && mx < this.x + this.width
                 && my >= rowY
-                && my < rowY + ContextMenu.ITEM_HEIGHT;
+                && my < rowY + this.itemHeight;
     }
 
     private void recalcWidth() {
@@ -396,13 +406,13 @@ public class ContextMenu {
         for (MenuItem item : this.items) {
             int lw = mc.font.width(item.getLabel());
             if (submenuOf(item) != null)
-                lw += ContextMenu.ARROW_RIGHT_PAD + 4;
+                lw += this.arrowRightPad + 4;
             if (item instanceof ItemStackMenuItem)
-                lw += ContextMenu.ITEM_HEIGHT; // place pour l'icône 16x16
+                lw += ContextMenu.ICON_SIZE; // place pour l'icône 16x16
             if (lw > max)
                 max = lw;
         }
-        this.width = Math.max(ContextMenu.MIN_WIDTH, max + ContextMenu.PADDING_X * 2);
+        this.width = Math.max(ContextMenu.MIN_WIDTH, max + this.paddingX * 2);
     }
 
     private interface MenuItem {

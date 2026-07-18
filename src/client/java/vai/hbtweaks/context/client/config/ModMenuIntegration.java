@@ -21,6 +21,11 @@ public class ModMenuIntegration implements ModMenuApi {
     private static final Component o_box_tt = Component.translatable("hbtweaks.context.config.box_position.tooltip");
     private static final Component o_plus = Component.translatable("hbtweaks.context.config.hide_plus");
     private static final Component o_plus_tt = Component.translatable("hbtweaks.context.config.hide_plus.tooltip");
+    private static final Component o_menu_style = Component.translatable("hbtweaks.context.config.menu_style");
+    private static final Component o_menu_style_tt = Component.translatable("hbtweaks.context.config.menu_style.tooltip");
+
+    private static final Component v_style_normal = Component.translatable("hbtweaks.context.config.menu_style.normal");
+    private static final Component v_style_minimal = Component.translatable("hbtweaks.context.config.menu_style.minimal");
 
     private static final Component v_top_left = Component.translatable("hbtweaks.context.config.pos.top_left");
     private static final Component v_top_right = Component.translatable("hbtweaks.context.config.pos.top_right");
@@ -60,6 +65,14 @@ public class ModMenuIntegration implements ModMenuApi {
                         .binding(def.hidePlusBox, () -> cfg.hidePlusBox, v -> cfg.hidePlusBox = v)
                         .controller(TickBoxControllerBuilder::create)
                         .build())
+                .option(Option.<HBConfig.MenuStyle>createBuilder()
+                        .name(o_menu_style)
+                        .description(dev.isxander.yacl3.api.OptionDescription.of(o_menu_style_tt))
+                        .binding(def.menuStyle, () -> cfg.menuStyle, v -> cfg.menuStyle = v)
+                        .controller(opt -> EnumControllerBuilder.create(opt)
+                                .enumClass(HBConfig.MenuStyle.class)
+                                .formatValue(ModMenuIntegration::menuStyleLabel))
+                        .build())
                 .build();
 
         YetAnotherConfigLib yacl = YetAnotherConfigLib.createBuilder()
@@ -77,6 +90,13 @@ public class ModMenuIntegration implements ModMenuApi {
             case TOP_RIGHT -> v_top_right;
             case BOTTOM_RIGHT -> v_bottom_right;
             case MOUSE -> v_mouse;
+        };
+    }
+
+    private static Component menuStyleLabel(HBConfig.MenuStyle style) {
+        return switch (style) {
+            case NORMAL -> v_style_normal;
+            case MINIMAL -> v_style_minimal;
         };
     }
 
