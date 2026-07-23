@@ -168,6 +168,10 @@ public class ContextMenu {
         return push(new SubmenuItem(label, submenu));
     }
 
+    public ContextMenu addCheckboxItem(CheckboxItem item) {
+        return push(item);
+    }
+
     public ContextMenu addItemStackItem(ItemStack stack) {
         return push(new ItemStackMenuItem(stack));
     }
@@ -343,6 +347,10 @@ public class ContextMenu {
             int itemY = this.y + i * this.itemHeight;
             if (isInsideRow(mx, my, itemY)) {
                 MenuItem item = this.items.get(i);
+                if (item instanceof CheckboxItem) {
+                    item.onClick();
+                    return false; // Keep the menu open
+                }
                 if (submenuOf(item) == null && !(item instanceof InfoItem)) {
                     item.onClick();
                     close();
@@ -548,6 +556,33 @@ public class ContextMenu {
         @Override
         public void onClick() {
             // Nothing
+        }
+    }
+
+    public abstract static class CheckboxItem implements MenuItem {
+        private final Component label;
+
+        protected CheckboxItem(Component label) {
+            this.label = label;
+        }
+
+        public abstract boolean isChecked();
+
+        protected abstract void checked();
+
+        protected abstract void unchecked();
+
+        @Override
+        public Component getLabel() {
+            return Component.literal(isChecked() ? "☑ " : "☐ ").append(this.label);
+        }
+
+        @Override
+        public void onClick() {
+            if (isChecked())
+                unchecked();
+            else
+                checked();
         }
     }
 

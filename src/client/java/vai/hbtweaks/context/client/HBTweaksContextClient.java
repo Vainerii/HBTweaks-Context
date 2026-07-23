@@ -2,6 +2,10 @@ package vai.hbtweaks.context.client;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
+import org.lwjgl.glfw.GLFW;
+import vai.hbtweaks.context.client.screen.CursorScreen;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -29,6 +33,9 @@ public class HBTweaksContextClient implements ClientModInitializer {
 
 	private static final LookAtInfoBox lookAtInfoBox = new LookAtInfoBox();
 
+	public static final KeyMapping CURSOR_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+			"key.hb-tweaks-context.cursor", GLFW.GLFW_KEY_R, KeyMapping.Category.MISC));
+
 	@Override
 	public void onInitializeClient() {
 		//new HerobrinePlayerListener().register();
@@ -44,8 +51,15 @@ public class HBTweaksContextClient implements ClientModInitializer {
 		MouseTracker.register();
 		MouseTrackerEntityClickUpCallback.EVENT.register(cmt);
 		MouseTrackerEntityClickUpCallback.EVENT.register(smt);
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			while (CURSOR_KEY.consumeClick()) {
+				if (client.screen == null && client.player != null)
+					client.setScreen(new CursorScreen());
+			}
+		});
+
 		ScreenEvents.BEFORE_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-			if (screen instanceof ChatScreen) {
+			if (screen instanceof ChatScreen || screen instanceof CursorScreen) {
 				ScreenMouseEvents.afterMouseClick(screen).register(cmt);
 				ScreenKeyboardEvents.afterKeyPress(screen).register((s, keyEvent) -> {
 					if (keyEvent.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_DELETE)

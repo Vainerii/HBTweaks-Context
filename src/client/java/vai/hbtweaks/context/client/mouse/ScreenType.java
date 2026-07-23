@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import vai.hbtweaks.context.client.screen.CursorScreen;
 
 public enum ScreenType {
     INVENTORY(InventoryScreen.class),
@@ -13,6 +14,7 @@ public enum ScreenType {
     CHAT(ChatScreen.class),
     PAUSE(PauseScreen.class),
     CREATIVE_INVENTORY(CreativeModeInventoryScreen.class),
+    CURSOR(CursorScreen.class),
     UNKNOWN(Screen.class);
 
     private final Class<? extends Screen> screenClass;

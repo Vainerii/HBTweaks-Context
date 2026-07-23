@@ -31,4 +31,6 @@ public class HBConfig {
     @SerialEntry public BoxPosition boxPosition = BoxPosition.TOP_LEFT;
     @SerialEntry public boolean hidePlusBox = false;
     @SerialEntry public MenuStyle menuStyle = MenuStyle.NORMAL;
+    @SerialEntry public boolean shareTyping = true;
+    //@SerialEntry public boolean showMyName = true;
 }

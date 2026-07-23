@@ -92,7 +92,7 @@ public class LookAtInfoBox implements ClientTickEvents.EndTick {
         rp = Util.getHead(player).copy().append(rp);
         if (!rp.getString().isEmpty())
             out.add(rp);
-        String mc = Util.getMCName(player);
+        String mc = Util.getVisibleMCName(player);
         if (mc != null)
             out.add(Component.literal(mc).withStyle(ChatFormatting.DARK_GRAY));
         // GMs also see the player's fake Minecraft name.

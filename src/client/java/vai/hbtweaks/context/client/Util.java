@@ -84,6 +84,14 @@ public class Util {
         return getFakeName(player) != null;
     }
 
+    // Minecraft name to display without perms
+    public static String getVisibleMCName(Player player) {
+        String fake = getFakeName(player);
+        if (!hasPerm() && fake != null)
+            return fake;
+        return getMCName(player);
+    }
+
     // It's working. but NPC are not simply easy to differentiate from players, so, lets stay vigilant.
     public static boolean isReal(Player player) {
         try {

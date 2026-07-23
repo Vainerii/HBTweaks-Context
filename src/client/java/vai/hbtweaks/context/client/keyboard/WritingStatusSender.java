@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screens.ChatScreen;
 import fr.herobrine.network.speech.ServerboundStartTypingPacket;
 import fr.herobrine.network.speech.ServerboundStopTypingPacket;
+import vai.hbtweaks.context.client.config.HBConfig;
 
 public class WritingStatusSender {
 
@@ -45,13 +46,14 @@ public class WritingStatusSender {
         sendTyping();
     }
 
-    private static void stopWriting() {
+    public static void stopWriting() {
         if (!writing) return;
         writing = false;
         sendStopTyping();
     }
 
     private static void sendTyping() {
+        if (!HBConfig.get().shareTyping) return;
         ClientPlayNetworking.send(new ServerboundStartTypingPacket(WritingObserver.getText().substring(0, 5)));
     }
 

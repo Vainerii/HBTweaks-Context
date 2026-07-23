@@ -9,6 +9,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.multiplayer.PlayerInfo;
@@ -30,6 +31,7 @@ import vai.hbtweaks.context.client.contextmenu.CustomContextMenuLoader;
 import vai.hbtweaks.context.client.contextmenu.editor.DeleteConfirmScreen;
 import vai.hbtweaks.context.client.contextmenu.editor.MenuLocation;
 import vai.hbtweaks.context.client.keyboard.WritersBank;
+import vai.hbtweaks.context.client.keyboard.WritingStatusSender;
 import vai.hbtweaks.context.client.Util;
 import vai.hbtweaks.context.client.config.HBConfig;
 import vai.hbtweaks.context.client.mouse.MouseTracker;
@@ -41,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static vai.hbtweaks.context.client.Util.*;
 
@@ -48,7 +51,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 {
 
     private static ContextMenu contextMenu = null;
-    private static java.util.UUID effectsRequestedFor = null;
+    private static UUID effectsRequestedFor = null;
 
     private static ContextMenuTrigger instance;
 
@@ -168,7 +171,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         if (pi == null) return null;
         ContextMenu infosContext = new ContextMenu(0, 0, player);
         infosContext.addInfoItem(pi.getTabListDisplayName());
-        addMcNameItems(infosContext, player, ContextMenuTrigger.getMCName(player));
+        addMcNameItems(infosContext, player, Util.getVisibleMCName(player));
         return infosContext;
     }
 
@@ -203,6 +206,39 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
         context.addCommandItem("Stuff", "stuff");
 
+        if (hasPerm()) {
+            ContextMenu options = new ContextMenu(0, 0, self);
+            options.addCheckboxItem(new ContextMenu.CheckboxItem(Component.literal("Partager si je suis en train d'écrire")) {
+                @Override public boolean isChecked() {
+                    return HBConfig.get().shareTyping;
+                }
+                @Override protected void checked() {
+                    HBConfig.get().shareTyping = true;
+                    HBConfig.HANDLER.save();
+                }
+                @Override protected void unchecked() {
+                    HBConfig.get().shareTyping = false;
+                    HBConfig.HANDLER.save();
+                    WritingStatusSender.stopWriting();
+                }
+            });
+            /*
+            options.addCheckboxItem(new ContextMenu.CheckboxItem(Component.literal("Montrer mon pseudo")) {
+                @Override public boolean isChecked() {
+                    return HBConfig.get().showMyName;
+                }
+                @Override protected void checked() {
+                    HBConfig.get().showMyName = true;
+                    HBConfig.HANDLER.save();
+                }
+                @Override protected void unchecked() {
+                    HBConfig.get().showMyName = false;
+                    HBConfig.HANDLER.save();
+                }
+            });*/
+            context.addSubmenuItem("Options", options);
+        }
+
         if (ContextMenuTrigger.customMenuSelf != null)
             context.merge(CustomContextMenuLoader.load(ContextMenuTrigger.customMenuSelf, Minecraft.getInstance().player, CUSTOM_MENU_SELF));
 
@@ -212,9 +248,17 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
         return context;
     }
 
+    private static Player firstVisiblePlayer(List<Entity> entities) {
+        for (Entity e : entities) {
+            if (e instanceof Player p && !p.isInvisible())
+                return p;
+        }
+        return null;
+    }
+
     @Override
     public void onClickUp(List<Entity> list, ClickType clickType, ScreenType screenType) {
-        if (screenType == ScreenType.CHAT && clickType == ClickType.RIGHT_CLICK) {
+        if ((screenType == ScreenType.CHAT || screenType == ScreenType.CURSOR) && clickType == ClickType.RIGHT_CLICK) {
             if (isMouseOverChat()) return;
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
@@ -222,8 +266,8 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
             int y = (int) mc.mouseHandler.getScaledYPos(mc.getWindow());
 
             try {
-                Entity target = list.isEmpty() ? null : list.getFirst();
-                if (!(target instanceof Player targetPlayer) || targetPlayer.isInvisible()) {
+                Player targetPlayer = firstVisiblePlayer(list);
+                if (targetPlayer == null) {
                     if (ContextMenuTrigger.contextMenu != null)
                         ContextMenuTrigger.contextMenu.close();
                     ContextMenuTrigger.contextMenu = makeSelfContextMenu(mc.player, x, y);
@@ -298,6 +342,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
 
     private static boolean isMouseOverChat() {
         Minecraft mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof ChatScreen)) return false;
         double scale = mc.options.chatScale().get();
         if (scale <= 0) return false;
         int width = ChatComponent.getWidth(mc.options.chatWidth().get());
@@ -344,13 +389,7 @@ public class ContextMenuTrigger implements MouseTrackerEntityClickUpCallback, Sc
     private static void renderHoverName(GuiGraphicsExtractor graphics, boolean leftDown) {
         if (Minecraft.getInstance().options.hideGui) return;
         if (isMouseOverChat()) return;
-        Player target = null;
-        for (Entity e : MouseTracker.getHoveredEntities()) {
-            if (e instanceof Player p && !p.isInvisible()) {
-                target = p;
-                break;
-            }
-        }
+        Player target = firstVisiblePlayer(MouseTracker.getHoveredEntities());
         if (target == null) return;
         if (!isReal(target)) return;
 
